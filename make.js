@@ -7,32 +7,139 @@
 *
 */
 
-function extend(obj, propName, func){
-  if(typeof propName !== "string")
-    $.each(propName, function(key, value){
-      extend(obj, key, value);
-    });
-  Object.defineProperty(obj, propName, {
-    value: func,
-    writable: true,
-    configurable: true,
-    enumerable: false
-  });
-}
+(function(){
+  var Make = {};
 
-extend(String.prototype, {
+  Make.extend = function(obj, propName, func){
+    if(typeof propName !== "string")
+      $.each(propName, function(key, value){
+        Make.extend(obj, key, value);
+      });
+    Object.defineProperty(obj, propName, {
+      value: func,
+      writable: true,
+      configurable: true,
+      enumerable: false
+    });
+  }
+
+  window.Parent = Make.Parent = ring.create({
+    constructor: function(name, klass, props){
+      this.name = name;
+      this.klass = klass;
+      (this.div = $("<div />", {
+        id: this.name,
+        class: klass.toLowerCase()
+      })).appendTo($(document.body));
+      $.extend(this, props);
+      if(this.has("css")) this.div.css(this.css);
+      this.make();
+      this.div.click(this.click);
+      this.div.mousedown(this.mousedown);
+      this.div.mouseup(this.mouseup);
+      this.makeChildren();
+    },
+    make: function(){},
+    click: function(){},
+    mousedown: function(){},
+    mouseup: function(){},
+    makeChildren: function(){
+      if(this.has("children")){
+        var children = Make.makeByHash(this.children, {}, this.klass);
+        if(children.isArray()){
+          var index=0;do{
+            children[index].div.appendTo(this.div);
+          }while(++index<children.length);
+        }else{
+          children.div.appendTo(this.div);
+        }
+      }
+    }
+  });
+
+  window.Container = ring.create([Make.Parent], {});
+
+  var _make = function(name, klass, properties){
+    return new window[klass](name, klass, properties);
+  };
+
+  Make.makeByName = function(name, klass, properties){
+    return (window[name] = _make(name, klass, properties));
+  };
+
+  Make.makeByHash = function(object, properties, klass){
+    compose = function(key, klass){
+      var value = object[key];
+      if (key === "klass" || key[0] === "_") return;
+      $.extend(value, properties);
+      switch(true){
+        case (value.has("klass")):
+          klass = value.klass;
+          break;
+        case (typeof klass !== "undefined"):
+          break;
+        default:
+          klass = "Parent";
+          break;
+      }
+      return (window[key] = _make(key, klass, value));
+    };
+    var keys = object.keys();
+    if(keys.length === 1){
+      return compose(keys[0], klass);
+    }else{
+      return [].fill(keys.length, function(index){
+        return compose(keys[index], klass)
+      }, klass);
+    }
+  };
+
+  Make.makeByArray = function(object, klass, properties){
+    return [].fill(object.length, function(index){
+      return _make(index, klass, $.extend(properties, object[index]));
+    }, klass, properties);
+  };
+
+  Make.makeByRepetition = function(number, klass, properties){
+    return [].fill(number, function(index){
+      return _make(index, klass, properties);
+    }, klass, properties);
+  };
+
+  window.make = function(object, klass, properties){
+    if(typeof klass !== "string" && typeof klass !== "undefined") throw new TypeError("Class must be a string");
+    if(typeof properties !== "undefined" && !properties.isDictionary()) throw new TypeError("Properties must be a hash");
+    switch(true){
+      case(typeof object === "string"):
+        return Make.makeByName(object, klass, properties);
+      case(typeof object === "number"):
+        return Make.makeByRepetition(object, klass, properties);
+      case(object.isArray()):
+        return Make.makeByArray(object, klass, properties);
+      case(object.isDictionary()):
+        return Make.makeByHash(object, properties, klass);
+      default:
+        throw new TypeError("Invalid first argument in make");
+        break;
+    }
+  };
+
+  window.Make = Make;
+})();
+
+Make.extend(String.prototype, {
 
   reverse: function(){
-    regexSymbolWithCombiningMarks = /([\0-\u02FF\u0370-\u1DBF\u1E00-\u20CF\u2100-\uD7FF\uDC00-\uFE1F\uFE30-\uFFFF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDBFF])([\u0300-\u036F\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]+)/g;
-    regexSurrogatePair = /([\uD800-\uDBFF])([\uDC00-\uDFFF])/g;
-    unreversed = this.replace(regexSymbolWithCombiningMarks, function($0, $1, $2) {
+    var regexSymbolWithCombiningMarks = /([\0-\u02FF\u0370-\u1DBF\u1E00-\u20CF\u2100-\uD7FF\uDC00-\uFE1F\uFE30-\uFFFF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDBFF])([\u0300-\u036F\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]+)/g;
+    var regexSurrogatePair = /([\uD800-\uDBFF])([\uDC00-\uDFFF])/g;
+    var unreversed = this.replace(regexSymbolWithCombiningMarks, function($0, $1, $2) {
         return $2.reverse() + $1;
     }).replace(regexSurrogatePair, '$2$1');
-    result = "";
-    index=unreversed.length;do{
+    var result = "";
+    var index=unreversed.length;do{
       result += unreversed.charAt(index);
     }while(index-- > 0);
-    brackets = {
+    var brackets = {
       "(": ")",
       "{": "}",
       "[": "]",
@@ -76,7 +183,7 @@ extend(String.prototype, {
 
 });
 
-extend(Object.prototype, {
+Make.extend(Object.prototype, {
 
   isDictionary: function(){
     if(!this) return false;
@@ -159,7 +266,7 @@ extend(Object.prototype, {
   }
 });
 
-extend(Math, {
+Make.extend(Math, {
 
   clamp: function(value, min, max){
     return Math.min(Math.max(value, min), max);
@@ -183,7 +290,7 @@ extend(Math, {
 
 });
 
-extend(Array.prototype, {
+Make.extend(Array.prototype, {
 
   isEmpty: function(){
     return this.length < 1;
@@ -191,16 +298,6 @@ extend(Array.prototype, {
 
   empty: function(){
     this.length = 0;
-  },
-
-  toHash: function(){
-    //fixme: undefined
-    keys = this.keys();
-    hash = {};
-    index=0;do{
-      hash[index] = this[index];
-    }while(++index<this.length);
-    return hash;
   },
 
   contains: function(item){
@@ -308,167 +405,43 @@ extend(Array.prototype, {
 
   last: function(){
     return this[this.length-1];
+  },
+
+  fill: function(length, func){
+    if(typeof func === "function"){
+      var index=0;do{
+        this.push(func(index, arguments));
+      }while(++index<length);
+    }else{
+      var index=0;do{
+        this.push(func);
+      }while(++index<length);      
+    }
+    return this;
   }
 
 });
 
-function comma(){
-  return ", ";
-}
+(function($){
 
-function colon(){
-  return ": ";
-}
+  $.fn.extend({
+    collidesWith: function($div2){
+      var x1 = $(this).offset().left;
+      var y1 = $(this).offset().top;
+      var h1 = $(this).outerHeight(true);
+      var w1 = $(this).outerWidth(true);
+      var b1 = y1 + h1;
+      var r1 = x1 + w1;
+      var x2 = $div2.offset().left;
+      var y2 = $div2.offset().top;
+      var h2 = $div2.outerHeight(true);
+      var w2 = $div2.outerWidth(true);
+      var b2 = y2 + h2;
+      var r2 = x2 + w2;
 
-function space(){
-  return " ";
-}
-
-function collision($div1, $div2) {
-  var x1 = $div1.offset().left;
-  var y1 = $div1.offset().top;
-  var h1 = $div1.outerHeight(true);
-  var w1 = $div1.outerWidth(true);
-  var b1 = y1 + h1;
-  var r1 = x1 + w1;
-  var x2 = $div2.offset().left;
-  var y2 = $div2.offset().top;
-  var h2 = $div2.outerHeight(true);
-  var w2 = $div2.outerWidth(true);
-  var b2 = y2 + h2;
-  var r2 = x2 + w2;
-
-  if (b1 < y2 || y1 > b2 || r1 < x2 || x1 > r2) return false;
-  return true;
-};
-
-Parent = ring.create({
-  constructor: function(name, klass, props){
-    this.name = name;
-    this.klass = klass;
-    this.div = $("<div />", {
-      id: this.name,
-      class: klass.toLowerCase()
-    });
-    $.extend(this, props);
-    if(this.has("container") && this.container){
-      this.container = $("<div />", {
-        class: "container",
-        id: this.name
-      });
-      toAppend = this.container;
-      this.div.appendTo(this.container);
-    }else{
-      toAppend = this.div;
+      if (b1 < y2 || y1 > b2 || r1 < x2 || x1 > r2) return false;
+      return true;
     }
-    if(this.has("section")){
-      toAppend.appendTo(this.section);
-    }else{
-      toAppend.appendTo($(document.body));
-    }
-    if(this.has("css")){
-      //fixme: make some rules apply to all children
-      switch(true){
-        case (this.has("container") && this.css.has("container")):
-          this.container.css(this.css.container);
-          break;
-        case (this.css.has("div")):
-          this.div.css(this.css.div);
-          break;
-        default:
-          this.div.css(this.css);
-          break;
-      }
-    }
-    this.make();
-    this.div.click(this.click);
-    this.div.mousedown(this.mousedown);
-    this.div.mouseup(this.mouseup);
-    this.makeChildren();
-  },
-  make: function(){
-  },
-  click: function(){
-  },
-  makeChildren: function(){
-    if(this.has("children")){
-      makeByHash(this.children, { klass: this.klass });
-      names = this.children.keys();
-      name=0;do{
-        child = window[names[name]];
-        child.div.detach().appendTo(this.div);
-      }while(++name<names.length);
-    }
-  }
-});
+  });
 
-Container = ring.create([Parent], {});
-
-function makeByName(name, klass, options){
-  return (window[name] = make(name, klass, options));
-}
-
-function makeByHash(hashName, options, key){
-  var hash = typeof hashName === "string"? window[hashName]: hashName;
-  compose = function(key, value){
-    name = value.has("name")? value.name : key;
-    if (name === "klass" || name[0] === "_") return;
-    if (value.has("klass") && typeof options !== "undefined" && options.has("klass")) delete options.klass;
-    $.extend(value, options);
-    switch(true){
-      case (hash.has("klass")):
-        klass = hash.klass;
-        break;
-      case (value.has("klass")):
-        klass = value.klass;
-        break;
-      case (typeof hashName === "string"):
-        klass = hashName.singularize().capitalize();
-        break;
-      default:
-        klass = "Parent";
-        break;
-    }
-    return (window[key] = make(name, klass, value));
-  }
-  if(typeof key === "undefined" || !key){
-    var keys = hash.keys();
-    if(keys.length === 1){
-      return compose(keys[0], hash[keys[0]]);
-    }else{
-      array = [];
-      $.each(hash, function(key, value){
-        array.push(compose(key, value));
-      });
-      return array;
-    }
-  }else{
-    return compose(key, hash[key]);
-  }
-}
-
-function makeByArray(array, klass, options){
-  returnArray = [];
-  array = typeof array === "string"? window[array] : array;
-  options = typeof options === "undefined"? {} : options;
-  index=0;do{
-    oldOptions = options;
-    $.extend(options, array[index]);
-    returnArray[index] = make(index, klass, options);
-    options = oldOptions;
-  }while(++index<array.length);
-  return returnArray;
-}
-
-function makeByRepetition(number, name, options){
-  var klass = name.singularize().capitalize();
-  var array = [];
-  var index=0;do{
-    array[index] = make(index, klass, options);
-  }while(++index<number);
-  return array;
-}
-
-function make(name, klass, props){
-  return new window[klass](name, klass, props);
-}
+})(jQuery);
