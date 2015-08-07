@@ -152,7 +152,7 @@ Make.extend(String.prototype, {
   },
 
   prefix: function(prefix){
-    prefix = String(prefix);
+    var prefix = String(prefix);
     return prefix + this;
   },
 
@@ -203,7 +203,7 @@ Make.extend(Object.prototype, {
   matches: function(something){
     if(typeof something === "undefined") return false;
     if(this.is(something)) return true;
-    j=0;do{
+    var j=0;do{
       if(typeof something[something.keys()[j]] === "undefined" || this[this.keys()[j]] !== something[something.keys()[j]]) return false;
       return true;
     }while(++j<this.keys().length);
@@ -219,7 +219,7 @@ Make.extend(Object.prototype, {
   },
 
   keys: function(){
-    array = [];
+    var array = [],
     i=0;do{
       array[i] = Object.keys(this)[i]
     }while(++i<Object.keys(this).length);
@@ -228,8 +228,8 @@ Make.extend(Object.prototype, {
 
   values: function(){
     if(!this.isDictionary()) return;
-    keys = this.keys();
-    values = [];
+    var keys = this.keys(),
+        values = [];
     keys.forEach(function(key){
       values.push(this[key]);
     });
@@ -242,10 +242,10 @@ Make.extend(Object.prototype, {
 
   invert: function(){
     if(!this.isDictionary()) return;
-    comparitor = [];
-    multiples = {};
-    values = this.values();
-    keys = this.keys();
+    var comparitor = [],
+        multiples = {},
+        values = this.values(),
+        keys = this.keys(),
     index=0;do{
       if(comparitor.contains(values[index])){
         if(typeof multiples[values[index]] === "undefined"){
@@ -258,7 +258,7 @@ Make.extend(Object.prototype, {
         comparitor.add(values[index]);
       }
     }while(++index<values.length);
-    comp=0;do{
+    var comp=0;do{
       if(typeof multiples[comparitor[comp]] === "undefined")
         multiples[comparitor[comp]] = keys[values.indexOf(comparitor[comp])];
     }while(++comp<comparitor.length);
@@ -273,7 +273,7 @@ Make.extend(Math, {
   },
 
   range: function(min, max){
-    array = Array.apply(null, Array(Math.abs(max-min+1))).map(function (_, i) {return i;});
+    var array = Array.apply(null, Array(Math.abs(max-min+1))).map(function (_, i) {return i;}),
     index=0;do{
       array[index] += min;
     }while(++index<array.length);
@@ -304,21 +304,14 @@ Make.extend(Array.prototype, {
     return this.indexOf(item) > -1;
   },
 
-  containsMatch: function(item){
-    i=0;do{
-      if(typeof this[i] !== "undefined" && this[i].matches(item)) return true;
-    }while(++i<this.length);
-    return false;
-  },
-
   where: function(rule){
-    which = [];
+    var which = [];
     this.forEach(function(element){ if(rule(element)) which.push(element); });
     return which;
   },
 
   containsWhere: function(rule){
-    contains = false;
+    var contains = false;
     this.forEach(function(element){ if(rule(element)) contains = true; });
     return contains;
   },
@@ -336,18 +329,10 @@ Make.extend(Array.prototype, {
   },
 
   modify: function(rule){
-    index=0;do{
+    var index=0;do{
       this[index] = rule(this[index]);
     }while(++index < this.length);
     return this;
-  },
-
-  modifyWhere: function(where, mod){
-    return this.where(where).modify(mod);
-  },
-
-  doWhere: function(where, task){
-    this.where(where).forEach(function(element){ task(element); });
   },
 
   removeWhere: function(where){
@@ -358,12 +343,12 @@ Make.extend(Array.prototype, {
   },
 
   removeAfter: function(item){
-    index = this.indexOf(item)+1;
+    var index = this.indexOf(item)+1;
     return this.splice(index, this.length-index);
   },
 
   cat: function(item){
-    array = item.isArray()? item : arguments;
+    var array = item.isArray()? item : arguments,
     index=0;do{
       this.push(array[index]);
     }while(++index<array.length);
@@ -391,7 +376,7 @@ Make.extend(Array.prototype, {
   },
 
   sortBy: function(rule){
-    sorted = this;
+    var sorted = this;
     sorted.sort(function(a, b){
       if (a == b) return 0;
       return rule(a, b) ? -1 : 1;
